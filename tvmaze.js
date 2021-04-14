@@ -5,16 +5,6 @@ const $episodesArea = $("#episodesArea");
 const $searchForm = $("#searchForm");
 
 
-/* USE THESE
-let showResponse = await axios.get("http://api.tvmaze.com/search/shows", {params: {q : "bletchley"}})
-response.data[0].show.name;
-response.data.length is the number of query responses
-response.data[0].show.id 
-
-let episodesResponse = await axios.get("http://api.tvmaze.com/shows/1767/episodes");
-response.data.length is the number of episodes
-*/
-
 /** Given a search term, search for tv shows that match that query.
  *
  *  Returns (promise) array of show objects: [show, show, ...].
@@ -30,7 +20,6 @@ async function getShowsByTerm(term) {
 
   let shows = []
   for (let show of showResponse.data) {
-    console.log(show.show.name, showResponse.data);
 
     let showData = {
       id: show.show.id,
@@ -40,7 +29,6 @@ async function getShowsByTerm(term) {
     }
     shows.push(showData)
   }
-  console.log("show data array --->", shows);
   return shows
 }
 
@@ -62,7 +50,7 @@ function populateShows(shows) {
            <div class="media-body">
              <h5 class="text-primary">${show.name}</h5>
              <div><small>${show.summary}</small></div>
-             <button class="btn btn-outline-light btn-sm Show-getEpisodes">
+             <button data-showId="${show.id}" class="btn btn-outline-light btn-sm Show-getEpisodes">
                Episodes
              </button>
            </div>
@@ -88,19 +76,65 @@ async function searchForShowAndDisplay() {
 }
 
 
-/*Form event => search handler*/
-$searchForm.on("submit", async function (evt) {
-  evt.preventDefault();
-  await searchForShowAndDisplay();
-});
+/*Episode Display Handler*/
+/*When episode button is clicked, appends episode list to the bottom of the page*/
+async function searchForEpisodesAndDisplay() {
+  $('.Show-getEpisodes').on("click", async function (e) {
+    $("#episodesList").empty();
+    console.log('click target -->', e.target);
+    console.log('function SearchForEpisodesAndDisplay --->', $(this).attr("data-showId"))
+    //Calls the AJAX function to get episodes
+    const episodes = await getEpisodesOfShow($(this).attr("data-showId"));
+    console.log('episodes array -->', episodes);
+    //Calls the populateEpisodes function to append to DOM
+    populateEpisodes(episodes);
+  })
+}
+
 
 
 /** Given a show ID, get from API and return (promise) array of episodes:
  *      { id, name, season, number }
  */
+async function getEpisodesOfShow(id) {
+  let episodesResponse = await axios.get(`http://api.tvmaze.com/shows/${id}/episodes`);
+  console.log('episodesResponse --->', episodesResponse.data);
 
-// async function getEpisodesOfShow(id) { }
+  let episodes = episodesResponse.data.map((episode) => ({
+    id: episode.id,
+    name: episode.name,
+    season: episode.season,
+    number: episode.number
+  }));
+
+  return episodes;
+}
 
 /** Write a clear docstring for this function... */
+/*takes an array of episode objects and appends li to the episodes ul for each episode
+=> EPISODE NAME Season # Episode # */
+function populateEpisodes(episodes) {
+  console.log('populateEpisodes with array --->', episodes)
+  let $list = $("#episodesList");
 
-// function populateEpisodes(episodes) { }
+  for (let episode of episodes) {
+    $list.append(`<li>
+    ${episode.name} Season ${episode.season} Episode ${episode.number}
+    </li>`)
+  }
+
+  console.log($list);
+  $episodesArea.append($list);
+  $episodesArea.show();
+}
+
+
+/*Form event => search handler*/
+/* when user searches a term and submits form, a list of shows is displayed. Each
+show has an Episode button that displays episodes at the list on the bottom of the 
+page on click*/
+$searchForm.on("submit", async function (evt) {
+  evt.preventDefault();
+  await searchForShowAndDisplay();
+  await searchForEpisodesAndDisplay();
+});
