@@ -3,8 +3,9 @@
 const $showsList = $("#showsList");
 const $episodesArea = $("#episodesArea");
 const $searchForm = $("#searchForm");
+const $episodesList = $("#episodesList");
 
-
+const API_BASE_URL = "http://api.tvmaze.com/"
 /** Given a search term, search for tv shows that match that query.
  *
  *  Returns (promise) array of show objects: [show, show, ...].
@@ -50,7 +51,7 @@ function populateShows(shows) {
            <div class="media-body">
              <h5 class="text-primary">${show.name}</h5>
              <div><small>${show.summary}</small></div>
-             <button data-showId="${show.id}" class="btn btn-outline-light btn-sm Show-getEpisodes">
+             <button class="btn btn-outline-light btn-sm Show-getEpisodes">
                Episodes
              </button>
            </div>
@@ -78,27 +79,24 @@ async function searchForShowAndDisplay() {
 
 /*Episode Display Handler*/
 /*When episode button is clicked, appends episode list to the bottom of the page*/
-async function searchForEpisodesAndDisplay() {
-  $('.Show-getEpisodes').on("click", async function (e) {
-    $("#episodesList").empty();
-    console.log('click target -->', e.target);
-    console.log('function SearchForEpisodesAndDisplay --->', $(this).attr("data-showId"))
-    //Calls the AJAX function to get episodes
-    const episodes = await getEpisodesOfShow($(this).attr("data-showId"));
-    console.log('episodes array -->', episodes);
-    //Calls the populateEpisodes function to append to DOM
-    populateEpisodes(episodes);
-  })
+async function searchForEpisodesAndDisplay(e) {
+  console.log('click target -->', e.target);
+  let showId = $(e.target).closest(".Show").data("show-id")
+  console.log('function SearchForEpisodesAndDisplay --->', $(e.target).closest(".Show").data("show-id"))
+
+  //Calls the AJAX function to get episodes
+  const episodes = await getEpisodesOfShow(showId);
+  //Calls the populateEpisodes function to append to DOM
+  populateEpisodes(episodes);
 }
 
-
+$showsList.on("click", ".Show-getEpisodes", searchForEpisodesAndDisplay);
 
 /** Given a show ID, get from API and return (promise) array of episodes:
  *      { id, name, season, number }
  */
 async function getEpisodesOfShow(id) {
-  let episodesResponse = await axios.get(`http://api.tvmaze.com/shows/${id}/episodes`);
-  console.log('episodesResponse --->', episodesResponse.data);
+  let episodesResponse = await axios.get(`${API_BASE_URL}shows/${id}/episodes`);
 
   let episodes = episodesResponse.data.map((episode) => ({
     id: episode.id,
@@ -114,17 +112,18 @@ async function getEpisodesOfShow(id) {
 /*takes an array of episode objects and appends li to the episodes ul for each episode
 => EPISODE NAME Season # Episode # */
 function populateEpisodes(episodes) {
+  $episodesList.empty();
   console.log('populateEpisodes with array --->', episodes)
-  let $list = $("#episodesList");
 
   for (let episode of episodes) {
-    $list.append(`<li>
-    ${episode.name} Season ${episode.season} Episode ${episode.number}
-    </li>`)
+    $episodesList.append(
+      `<li>
+        ${episode.name} Season ${episode.season} Episode ${episode.number}
+      </li>`
+    )
   }
 
-  console.log($list);
-  $episodesArea.append($list);
+  console.log($episodesList);
   $episodesArea.show();
 }
 
@@ -136,5 +135,4 @@ page on click*/
 $searchForm.on("submit", async function (evt) {
   evt.preventDefault();
   await searchForShowAndDisplay();
-  await searchForEpisodesAndDisplay();
 });
